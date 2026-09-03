@@ -1,0 +1,257 @@
+package com.example.codewithharry
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+
+data class Doctor(
+    val name: String,
+    val speciality: String,
+    val experience: String,
+    val rating: Double,
+    val slots: List<String>
+)
+
+val doctorList = listOf(
+    Doctor("Dr. Rahul Sharma", "Cardiologist", "12 Years", 4.8,
+        listOf("10:00 AM", "12:00 PM", "3:00 PM")),
+    Doctor("Dr. Priya Mehta", "Dermatologist", "9 Years", 4.7,
+        listOf("9:00 AM", "1:00 PM", "5:00 PM")),
+    Doctor("Dr. Aman Verma", "Neurologist", "15 Years", 4.9,
+        listOf("11:00 AM", "2:00 PM", "6:00 PM"))
+)
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            MaterialTheme {
+                HealthcareApp()
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HealthcareApp() {
+    var selectedDoctor by remember { mutableStateOf<Doctor?>(null) }
+    var selectedSlot by remember { mutableStateOf("") }
+    var isBooked by remember { mutableStateOf(false) }
+    var showDialog by remember { mutableStateOf(false) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Smart Healthcare") }
+            )
+        }
+    ) { padding ->
+        if (selectedDoctor == null) {
+            DoctorList(
+                modifier = Modifier.padding(padding),
+                onDoctorClick = {
+                    selectedDoctor = it
+                }
+            )
+        } else {
+            AppointmentScreen(
+                modifier = Modifier.padding(padding),
+                doctor = selectedDoctor!!,
+                selectedSlot = selectedSlot,
+                isBooked = isBooked,
+                onSlotClick = {
+                    selectedSlot = it
+                },
+                onBookClick = {
+                    isBooked = true
+                },
+                onCancelClick = {
+                    showDialog = true
+                },
+                onBackClick = {
+                    selectedDoctor = null
+                    selectedSlot = ""
+                    isBooked = false
+                }
+            )
+        }
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showDialog = false
+            },
+            title = {
+                Text("Cancel Appointment")
+            },
+            text = {
+                Text("Are you sure you want to cancel?")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        isBooked = false
+                        selectedSlot = ""
+                        showDialog = false
+                    }
+                ) {
+                    Text("Yes")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showDialog = false
+                    }
+                ) {
+                    Text("No")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun DoctorList(
+    modifier: Modifier,
+    onDoctorClick: (Doctor) -> Unit
+) {
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        item {
+            Text(
+                text = "Available Doctors",
+                style = MaterialTheme.typography.headlineSmall
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+        items(doctorList) { doctor ->
+            DoctorCard(
+                doctor = doctor,
+                onClick = {
+                    onDoctorClick(doctor)
+                }
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+    }
+}
+
+@Composable
+fun DoctorCard(
+    doctor: Doctor,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = doctor.name,
+                style = MaterialTheme.typography.titleLarge
+            )
+            Text(text = doctor.speciality)
+            Text(text = "${doctor.experience} Experience")
+            Text(text = "Rating: ⭐ ${doctor.rating}")
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(onClick = onClick) {
+                Text("View & Book")
+            }
+        }
+    }
+}
+
+@Composable
+fun AppointmentScreen(
+    modifier: Modifier,
+    doctor: Doctor,
+    selectedSlot: String,
+    isBooked: Boolean,
+    onSlotClick: (String) -> Unit,
+    onBookClick: () -> Unit,
+    onCancelClick: () -> Unit,
+    onBackClick: () -> Unit
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        TextButton(onClick = onBackClick) {
+            Text("← Back")
+        }
+        Text(
+            text = doctor.name,
+            style = MaterialTheme.typography.headlineSmall
+        )
+        Text(text = doctor.speciality)
+        Text(text = "${doctor.experience} Experience")
+        Text(text = "Rating: ⭐ ${doctor.rating}")
+        Spacer(modifier = Modifier.height(20.dp))
+        Text(
+            text = "Select Appointment Slot",
+            style = MaterialTheme.typography.titleLarge
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+
+        doctor.slots.forEach { slot ->
+            FilterChip(
+                selected = selectedSlot == slot,
+                onClick = {
+                    onSlotClick(slot)
+                },
+                label = {
+                    Text(slot)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(15.dp))
+
+        if (isBooked) {
+            Card(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Appointment Confirmed ✓",
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            OutlinedButton(
+                onClick = onCancelClick,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Cancel Appointment")
+            }
+        } else {
+            Button(
+                onClick = onBookClick,
+                enabled = selectedSlot.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Book Appointment")
+            }
+        }
+    }
+}
